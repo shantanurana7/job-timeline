@@ -1,0 +1,48 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+
+# ── Environment ───────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+# Keep .env.example committed
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Uploads (local file storage) ──────────────────────────────
+backend/uploads/
+
+# ── Prisma ────────────────────────────────────────────────────
+# Keep migrations committed, ignore generated client
+backend/node_modules/.prisma/
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Testing ───────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Misc ──────────────────────────────────────────────────────
+*.tsbuildinfo
