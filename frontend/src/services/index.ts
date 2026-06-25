@@ -78,3 +78,27 @@ export const settingsApi = {
   update: (key: string, value: string) =>
     apiClient.patch(`/settings/${key}`, { value }).then((r) => r.data),
 };
+
+export const analyticsApi = {
+  dashboard: () => apiClient.get('/analytics/dashboard').then((r) => r.data),
+  workload: () => apiClient.get('/analytics/workload').then((r) => r.data),
+  streams: () => apiClient.get('/analytics/streams').then((r) => r.data),
+};
+
+export const attachmentsApi = {
+  upload: (jobId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post(`/jobs/${jobId}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data);
+  },
+  list: (jobId: string) => apiClient.get(`/jobs/${jobId}/attachments`).then((r) => r.data),
+  delete: (id: string) => apiClient.delete(`/attachments/${id}`).then((r) => r.data),
+};
+
+export const aiApi = {
+  chat: (query: string, history: any[] = []) =>
+    apiClient.post('/ai/chat', { query, history }).then((r) => r.data),
+};
+

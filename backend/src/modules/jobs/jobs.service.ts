@@ -22,6 +22,8 @@ const STATUS_TRANSITIONS: Record<JobStatus, JobStatus[]> = {
   [JobStatus.CANCELLED]: [],
 };
 
+import { NotificationsGateway } from '../notifications/notifications.gateway';
+
 const jobSelect = {
   id: true,
   jobNumber: true,
@@ -61,7 +63,10 @@ const jobSelect = {
 export class JobsService {
   private readonly logger = new Logger(JobsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsGateway: NotificationsGateway,
+  ) {}
 
   async findAll(currentUser: any, filters: JobFiltersDto) {
     const where: any = {};
@@ -235,6 +240,13 @@ export class JobsService {
         },
       }),
     ]);
+
+    // Broadcast status change
+    this.notificationsGateway.broadcastJobUpdate(updatedJob.id, updatedJob.status, {
+      jobNumber: updatedJob.jobNumber,
+      title: updatedJob.title,
+      changedBy: currentUser.id,
+    });
 
     return updatedJob;
   }

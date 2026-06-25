@@ -74,27 +74,30 @@ function JobRow({ job }: { job: Job }) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [data, setData] = useState<{
+    kpis: any;
+    byStatus: Record<string, number>;
+    recentJobs: Job[];
+    atRiskJobs: Job[];
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    jobsApi.list().then((r) => { setJobs(r.data || []); setLoading(false); }).catch(() => setLoading(false));
+    import('@/services').then(({ analyticsApi }) => {
+      analyticsApi.dashboard().then((r) => {
+        setData(r.data);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+    });
   }, []);
 
-  const byStatus = (status: JobStatus) => jobs.filter((j) => j.status === status).length;
-  const atRisk = jobs.filter((j) => j.isAtRisk).length;
-  const inProgress = jobs.filter((j) => j.status === 'IN_PROGRESS').length;
-  const completed = jobs.filter((j) => j.status === 'COMPLETED').length;
-  const total = jobs.length;
-
-  const recentJobs = [...jobs].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 8);
-  const atRiskJobs = jobs.filter((j) => j.isAtRisk).slice(0, 5);
+  const total = data?.kpis?.totalJobs || 0;
 
   const kpis: KPI[] = [
     { label: 'Total Jobs', value: total, icon: <Briefcase size={20} />, color: 'var(--accent)', bgColor: 'var(--accent-soft)' },
-    { label: 'In Progress', value: inProgress, icon: <TrendingUp size={20} />, color: 'var(--info)', bgColor: 'var(--info-soft)' },
-    { label: 'At Risk', value: atRisk, icon: <AlertTriangle size={20} />, color: 'var(--danger)', bgColor: 'var(--danger-soft)' },
-    { label: 'Completed', value: completed, icon: <CheckCircle size={20} />, color: 'var(--success)', bgColor: 'var(--success-soft)' },
+    { label: 'In Progress', value: data?.kpis?.inProgress || 0, icon: <TrendingUp size={20} />, color: 'var(--info)', bgColor: 'var(--info-soft)' },
+    { label: 'At Risk', value: data?.kpis?.atRiskCount || 0, icon: <AlertTriangle size={20} />, color: 'var(--danger)', bgColor: 'var(--danger-soft)' },
+    { label: 'Completed', value: data?.kpis?.completedToday || 0, icon: <CheckCircle size={20} />, color: 'var(--success)', bgColor: 'var(--success-soft)' },
   ];
 
   return (
@@ -139,8 +142,8 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentJobs.map((job) => <JobRow key={job.id} job={job} />)}
-                  {recentJobs.length === 0 && (
+                  {data?.recentJobs?.map((job) => <JobRow key={job.id} job={job} />)}
+                  {!data?.recentJobs?.length && (
                     <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No jobs yet</td></tr>
                   )}
                 </tbody>
@@ -158,12 +161,12 @@ export default function DashboardPage() {
             </h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {atRiskJobs.length === 0 ? (
+            {!data?.atRiskJobs?.length ? (
               <div className="card card-body" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 <CheckCircle size={24} color="var(--success)" style={{ margin: '0 auto 0.5rem' }} />
                 No at-risk jobs. Great work!
               </div>
-            ) : atRiskJobs.map((job) => {
+            ) : data.atRiskJobs.map((job) => {
               const { label } = deadlineCountdown(job.deadline);
               return (
                 <Link key={job.id} href={`/jobs/${job.id}`}>
@@ -187,7 +190,7 @@ export default function DashboardPage() {
                 Status Breakdown
               </h4>
               {(['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'AT_RISK', 'COMPLETED'] as JobStatus[]).map((s) => {
-                const count = byStatus(s);
+                const count = data?.byStatus?.[s] || 0;
                 const pct = total ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={s} style={{ marginBottom: '0.5rem' }}>

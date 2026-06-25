@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import * as helmet from 'helmet';
@@ -42,6 +43,9 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // Global exception filter — standardised { success, statusCode, message } responses
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Swagger (development only)
   if (configService.get('NODE_ENV') !== 'production') {

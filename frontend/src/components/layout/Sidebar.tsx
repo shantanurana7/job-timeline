@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Briefcase, Calendar, Users, Settings,
-  LogOut, Zap, Bell, BarChart2, Shield,
+  LogOut, Zap, Bell, BarChart2, Shield, Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { authApi } from '@/services';
@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
   { label: 'AI Agent', href: '/ai', icon: <Zap size={18} /> },
   { label: 'Admin', href: '/admin', icon: <Shield size={18} />, roles: ['ADMIN'] },
+  { label: 'Streams', href: '/admin/streams', icon: <Layers size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
   { label: 'Settings', href: '/admin/settings', icon: <Settings size={18} />, roles: ['ADMIN'] },
 ];
 

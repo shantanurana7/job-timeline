@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query, UseGuards,
+  Controller, Get, Post, Patch, Body, Param, Query, UseGuards, UseInterceptors
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -9,6 +9,9 @@ import { CreateJobDto, UpdateJobDto, ChangeJobStatusDto, DelegateJobDto } from '
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ApiResponse } from '../../common/dto/api-response.dto';
 
+import { UserCacheInterceptor } from '../../common/interceptors/user-cache.interceptor';
+import { CacheTTL } from '@nestjs/cache-manager';
+
 @ApiTags('Jobs')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -17,6 +20,8 @@ export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get()
+  @UseInterceptors(UserCacheInterceptor)
+  @CacheTTL(10)
   @ApiOperation({ summary: 'List jobs (role-scoped)' })
   @ApiQuery({ name: 'status', enum: JobStatus, required: false })
   @ApiQuery({ name: 'priority', enum: JobPriority, required: false })

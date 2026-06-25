@@ -4,10 +4,16 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAssignmentDto, UnassignDto } from './dto/assignment.dto';
 import { JobStatus } from '@prisma/client';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AssignmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsGateway: NotificationsGateway,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async assign(dto: CreateAssignmentDto, assignedById: string) {
     const job = await this.prisma.job.findUnique({ where: { id: dto.jobId } });
@@ -58,6 +64,19 @@ export class AssignmentsService {
       });
     }
 
+    // Create DB notification
+    const notification = await this.notificationsService.create({
+      userId: dto.designerId,
+      type: 'JOB_ASSIGNED',
+      title: 'New Job Assignment',
+      message: `You have been assigned to ${job.jobNumber} (${job.title}).`,
+      jobId: job.id,
+      metadata: { link: `/jobs/${job.id}` },
+    });
+
+    // Push via websocket
+    this.notificationsGateway.sendToUser(dto.designerId, 'notification:new', notification);
+
     return assignment;
   }
 
@@ -86,6 +105,20 @@ export class AssignmentsService {
         },
       }),
     ]);
+
+    const job = await this.prisma.job.findUnique({ where: { id: assignment.jobId } });
+
+    // Create DB notification
+    const notification = await this.notificationsService.create({
+      userId: assignment.designerId,
+      type: 'SYSTEM',
+      title: 'Job Unassigned',
+      message: `You have been unassigned from ${job?.jobNumber ?? 'a job'}. Reason: ${dto.reason}`,
+      jobId: assignment.jobId,
+    });
+
+    // Push via websocket
+    this.notificationsGateway.sendToUser(assignment.designerId, 'notification:new', notification);
 
     return { message: 'Designer unassigned' };
   }

@@ -34,15 +34,21 @@ export default function JobDetailPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [job, setJob] = useState<Job | null>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const id = params.id as string;
 
-  const loadJob = async () => {
+  const loadData = async () => {
     try {
-      const res = await jobsApi.get(id);
-      setJob(res.data);
+      const [jobRes, attRes] = await Promise.all([
+        jobsApi.get(id),
+        import('@/services').then(({ attachmentsApi }) => attachmentsApi.list(id)),
+      ]);
+      setJob(jobRes.data);
+      setAttachments(attRes.data || []);
     } catch {
       toast.error('Job not found');
       router.push('/jobs');
@@ -51,7 +57,7 @@ export default function JobDetailPage() {
     }
   };
 
-  useEffect(() => { loadJob(); }, [id]);
+  useEffect(() => { loadData(); }, [id]);
 
   const handleStatusChange = async (newStatus: JobStatus) => {
     if (!job) return;
@@ -59,11 +65,41 @@ export default function JobDetailPage() {
     try {
       await jobsApi.changeStatus(job.id, newStatus);
       toast.success(`Status changed to ${getStatusLabel(newStatus)}`);
-      await loadJob();
+      await loadData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Failed to change status');
     } finally {
       setChangingStatus(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !job) return;
+    
+    setUploading(true);
+    try {
+      const { attachmentsApi } = await import('@/services');
+      await attachmentsApi.upload(job.id, file);
+      toast.success('File uploaded successfully');
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+      e.target.value = ''; // reset input
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!confirm('Delete this attachment?')) return;
+    try {
+      const { attachmentsApi } = await import('@/services');
+      await attachmentsApi.delete(attachmentId);
+      toast.success('File deleted');
+      await loadData();
+    } catch (err: any) {
+      toast.error('Failed to delete file');
     }
   };
 
@@ -159,6 +195,46 @@ export default function JobDetailPage() {
                     {a.isPrimary && (
                       <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', fontSize: '0.7rem' }}>Primary</span>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div className="card card-body">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.875rem' }}>
+              <h3 style={{ fontWeight: 700 }}>Attachments</h3>
+              <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
+                {uploading ? <div className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} /> : null}
+                Upload File
+                <input type="file" style={{ display: 'none' }} onChange={handleFileUpload} disabled={uploading} />
+              </label>
+            </div>
+
+            {!attachments?.length ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No attachments yet</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {attachments.map((a) => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem', background: 'var(--bg-elevated)', borderRadius: 'var(--radius)' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{a.fileName}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {(parseInt(a.sizeBytes, 10) / 1024 / 1024).toFixed(2)} MB • Uploaded by {a.uploadedBy?.firstName} {a.uploadedBy?.lastName}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <a href={a.fileKey.startsWith('http') ? a.fileKey : `http://localhost:3001${a.fileKey}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm">
+                        View
+                      </a>
+                      {/* Delete logic. Only Admin/WA or owner can delete */}
+                      {(user?.role === 'ADMIN' || user?.role === 'WORKFLOW_ADMIN' || user?.id === a.uploadedById) && (
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteAttachment(a.id)}>
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
