@@ -1,8 +1,10 @@
 'use client';
 import Sidebar from '@/components/layout/Sidebar';
+import AiDrawer from '@/components/layout/AiDrawer';
 import AuthProvider from '@/components/providers/AuthProvider';
-import { Bell } from 'lucide-react';
+import { Bell, Zap } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
+import { useAiStore } from '@/stores/ai.store';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -11,6 +13,7 @@ import { useSocket } from '@/hooks/useSocket';
 
 function Topbar() {
   const { user } = useAuthStore();
+  const { toggleOpen: toggleAi } = useAiStore();
   const socket = useSocket();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -22,8 +25,8 @@ function Topbar() {
 
   useEffect(() => {
     if (!socket) return;
-    
-    socket.on('notification', (payload) => {
+
+    socket.on('notification', () => {
       setUnreadCount((prev) => prev + 1);
     });
 
@@ -36,18 +39,43 @@ function Topbar() {
     <header className="topbar">
       <div style={{ flex: 1 }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {user?.role === 'WORKFLOW_ADMIN' && (
+          <button
+            className="btn btn-ghost btn-icon"
+            onClick={toggleAi}
+            aria-label="AI Workflow Agent"
+            title="AI Workflow Agent"
+            style={{ color: 'var(--accent)' }}
+          >
+            <Zap size={18} />
+          </button>
+        )}
         <Link href="/notifications">
-          <button className="btn btn-ghost btn-icon" style={{ position: 'relative' }} aria-label="Notifications">
+          <button
+            className="btn btn-ghost btn-icon"
+            style={{ position: 'relative' }}
+            aria-label="Notifications"
+          >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span style={{
-                position: 'absolute', top: '2px', right: '2px',
-                width: 16, height: 16, borderRadius: '50%',
-                background: 'var(--danger)', color: 'white',
-                border: '1.5px solid var(--bg-surface)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.65rem', fontWeight: 700,
-              }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  background: 'var(--danger)',
+                  color: 'white',
+                  border: '1.5px solid var(--bg-surface)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                }}
+              >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -73,6 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+        <AiDrawer />
       </div>
     </AuthProvider>
   );

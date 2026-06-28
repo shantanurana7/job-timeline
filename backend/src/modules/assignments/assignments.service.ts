@@ -2,10 +2,11 @@ import {
   Injectable, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateAssignmentDto, UnassignDto } from './dto/assignment.dto';
+import { CreateAssignmentDto, UnassignDto, UpdateAssignmentDto } from './dto/assignment.dto';
 import { JobStatus } from '@prisma/client';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 
 @Injectable()
 export class AssignmentsService {
@@ -13,13 +14,16 @@ export class AssignmentsService {
     private prisma: PrismaService,
     private notificationsGateway: NotificationsGateway,
     private notificationsService: NotificationsService,
+    private webhooksService: WebhooksService,
   ) {}
 
   async assign(dto: CreateAssignmentDto, assignedById: string) {
     const job = await this.prisma.job.findUnique({ where: { id: dto.jobId } });
     if (!job) throw new NotFoundException('Job not found');
 
-    const assignableStatuses: JobStatus[] = [JobStatus.ACCEPTED, JobStatus.ASSIGNED, JobStatus.IN_PROGRESS];
+    const assignableStatuses: JobStatus[] = [
+      JobStatus.UNDER_REVIEW, JobStatus.ACCEPTED, JobStatus.ASSIGNED, JobStatus.IN_PROGRESS,
+    ];
     if (!assignableStatuses.includes(job.status)) {
       throw new BadRequestException(`Cannot assign to a job in status ${job.status}`);
     }
@@ -45,8 +49,8 @@ export class AssignmentsService {
         jobId: dto.jobId,
         designerId: dto.designerId,
         assignedById,
-        startTime: new Date(dto.startTime),
-        endTime: new Date(dto.endTime),
+        startTime: dto.startTime,
+        endTime: dto.endTime,
         isPrimary: dto.isPrimary ?? currentCount === 0, // First is primary by default
       },
       include: {
@@ -56,12 +60,24 @@ export class AssignmentsService {
       },
     });
 
-    // Advance job to ASSIGNED if it was ACCEPTED
-    if (job.status === JobStatus.ACCEPTED) {
-      await this.prisma.job.update({
-        where: { id: dto.jobId },
-        data: { status: JobStatus.ASSIGNED },
-      });
+    // Advance job to ASSIGNED when assigning from ACCEPTED or UNDER_REVIEW
+    if (job.status === JobStatus.ACCEPTED || job.status === JobStatus.UNDER_REVIEW) {
+      await this.prisma.$transaction([
+        this.prisma.job.update({
+          where: { id: dto.jobId },
+          data: { status: JobStatus.ASSIGNED },
+        }),
+        this.prisma.jobStatusHistory.create({
+          data: {
+            jobId: dto.jobId,
+            fromStatus: job.status,
+            toStatus: JobStatus.ASSIGNED,
+            changedById: assignedById,
+            isSystem: true,
+            reason: 'Auto-advanced to ASSIGNED on designer assignment',
+          },
+        }),
+      ]);
     }
 
     // Create DB notification
@@ -76,6 +92,9 @@ export class AssignmentsService {
 
     // Push via websocket
     this.notificationsGateway.sendToUser(dto.designerId, 'notification:new', notification);
+
+    // Notify Slack — fire-and-forget, does not block the response
+    void this.webhooksService.notifyDesignerAssigned(assignment);
 
     return assignment;
   }
@@ -159,6 +178,27 @@ export class AssignmentsService {
         assignedBy: { select: { id: true, firstName: true, lastName: true } },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+  }
+
+  async reschedule(assignmentId: string, dto: UpdateAssignmentDto) {
+    const assignment = await this.prisma.jobAssignment.findUnique({
+      where: { id: assignmentId },
+    });
+    if (!assignment || !assignment.isActive) {
+      throw new NotFoundException('Assignment not found or already inactive');
+    }
+    return this.prisma.jobAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        ...(dto.startTime ? { startTime: dto.startTime } : {}),
+        ...(dto.endTime ? { endTime: dto.endTime } : {}),
+        ...(dto.designerId ? { designerId: dto.designerId } : {}),
+      },
+      include: {
+        designer: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        job: { select: { id: true, jobNumber: true, title: true } },
+      },
     });
   }
 

@@ -172,12 +172,22 @@ export interface AiConversation {
   updatedAt: string;
 }
 
+export type AiActionName = 'assign_designer_to_job' | 'change_job_status';
+
 export interface AiActionProposal {
   id: string;
-  type: 'assign_job' | 'move_slot' | 'update_priority' | 'reassign_job';
+  action: AiActionName;
   description: string;
-  payload: Record<string, unknown>;
   reasoning: string;
+  payload: {
+    jobId: string;
+    jobNumber: string;
+    designerId?: string;
+    designerName?: string;
+    startTime?: string;
+    endTime?: string;
+    newStatus?: string;
+  };
   expiresAt: string;
 }
 

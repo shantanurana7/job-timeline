@@ -119,33 +119,106 @@ export class AnalyticsService {
   }
 
   async getStreamThroughput() {
-    const streams = await this.prisma.stream.findMany({
-      where: { isActive: true },
-      include: {
-        _count: {
-          select: { jobs: true },
-        },
-        jobs: {
-          select: { status: true },
-        },
-      },
-    });
+    // Two queries run in parallel:
+    //   1. stream metadata (id, name, colorHex) — lightweight
+    //   2. job counts grouped by (streamId, status) — PostgreSQL GROUP BY, not JS iteration
+    // Old approach loaded every job row into Node.js memory just to count statuses.
+    const [streams, jobCounts] = await Promise.all([
+      this.prisma.stream.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, colorHex: true },
+      }),
+      this.prisma.job.groupBy({
+        by: ['streamId', 'status'],
+        where: { streamId: { not: null } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    // Index counts by streamId for O(1) lookup during the final map.
+    const countMap = new Map<string, Record<string, number>>();
+    for (const row of jobCounts) {
+      if (!row.streamId) continue;
+      const byStatus = countMap.get(row.streamId) ?? {};
+      byStatus[row.status] = row._count._all;
+      countMap.set(row.streamId, byStatus);
+    }
 
     return streams.map((s) => {
-      const statusMap: Record<string, number> = {};
-      for (const j of s.jobs) {
-        statusMap[j.status] = (statusMap[j.status] ?? 0) + 1;
-      }
+      const byStatus = countMap.get(s.id) ?? {};
+      const totalJobs = Object.values(byStatus).reduce((sum, n) => sum + n, 0);
       return {
         id: s.id,
         name: s.name,
         colorHex: s.colorHex,
-        totalJobs: s._count.jobs,
-        byStatus: statusMap,
-        completed: statusMap['COMPLETED'] ?? 0,
-        atRisk: statusMap['AT_RISK'] ?? 0,
+        totalJobs,
+        byStatus,
+        completed: byStatus[JobStatus.COMPLETED] ?? 0,
+        atRisk: byStatus[JobStatus.AT_RISK] ?? 0,
       };
     });
+  }
+
+  async exportJobsCsv(currentUser: any): Promise<string> {
+    const roleFilter = this.buildRoleFilter(currentUser);
+
+    const jobs = await this.prisma.job.findMany({
+      where: roleFilter,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        jobNumber: true,
+        title: true,
+        status: true,
+        priority: true,
+        billingCode: true,
+        isAtRisk: true,
+        deadline: true,
+        createdAt: true,
+        completedAt: true,
+        delegationCount: true,
+        stream: { select: { name: true } },
+        client: { select: { firstName: true, lastName: true } },
+        assignments: {
+          where: { isActive: true },
+          select: { designer: { select: { firstName: true, lastName: true } } },
+        },
+      },
+    });
+
+    const rows = jobs.map((j) => ({
+      'Job Number': j.jobNumber,
+      'Title': j.title,
+      'Status': j.status,
+      'Priority': j.priority,
+      'Stream': j.stream?.name ?? '',
+      'Client': `${j.client.firstName} ${j.client.lastName}`,
+      'Deadline': j.deadline ? j.deadline.toISOString().slice(0, 10) : '',
+      'Created At': j.createdAt.toISOString().slice(0, 16).replace('T', ' '),
+      'Completed At': j.completedAt ? j.completedAt.toISOString().slice(0, 16).replace('T', ' ') : '',
+      'At Risk': j.isAtRisk ? 'Yes' : 'No',
+      'Billing Code': j.billingCode ?? '',
+      'Delegation Hops': j.delegationCount,
+      'Assigned Designers': j.assignments
+        .map((a) => `${a.designer.firstName} ${a.designer.lastName}`)
+        .join('; '),
+    }));
+
+    return this.toCsv(rows);
+  }
+
+  private toCsv(rows: Record<string, unknown>[]): string {
+    if (rows.length === 0) return 'No data available\r\n';
+
+    const headers = Object.keys(rows[0]);
+    const escape = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      const str = String(val).replace(/"/g, '""');
+      return /[,"\n\r]/.test(str) ? `"${str}"` : str;
+    };
+
+    const headerRow = headers.map(escape).join(',');
+    const dataRows = rows.map((row) => headers.map((h) => escape(row[h])).join(','));
+    return [headerRow, ...dataRows].join('\r\n');
   }
 
   private buildRoleFilter(currentUser: any) {

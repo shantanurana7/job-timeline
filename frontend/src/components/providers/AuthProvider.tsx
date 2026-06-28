@@ -8,7 +8,7 @@ import { setAccessToken } from '@/services/api';
 const PUBLIC_ROUTES = ['/login'];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, setUser, isLoading } = useAuthStore();
+  const { isAuthenticated, setUser, isLoading, user } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const initialized = useRef(false);
@@ -46,13 +46,31 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (isLoading) return;
     const isPublic = PUBLIC_ROUTES.includes(pathname);
+    const isClient = user?.role === 'CLIENT';
+
     if (!isAuthenticated && !isPublic) {
       router.replace('/login');
+      return;
     }
-    if (isAuthenticated && isPublic) {
-      router.replace('/dashboard');
+
+    if (isAuthenticated) {
+      // Redirect from public routes (e.g. /login) to role home
+      if (isPublic) {
+        router.replace(isClient ? '/portal' : '/dashboard');
+        return;
+      }
+      // Redirect CLIENT landing on /dashboard (root page server-redirect target) to portal
+      if (isClient && pathname === '/dashboard') {
+        router.replace('/portal');
+        return;
+      }
+      // Redirect non-CLIENT attempting to access portal to dashboard
+      if (!isClient && pathname.startsWith('/portal')) {
+        router.replace('/dashboard');
+        return;
+      }
     }
-  }, [isAuthenticated, isLoading, pathname, router]);
+  }, [isAuthenticated, isLoading, pathname, router, user]);
 
   if (isLoading) {
     return (

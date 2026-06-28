@@ -546,3 +546,493 @@ tbody tr:last-child td { border-bottom: none; }
   .main-content { margin-left: 0; }
   .page { padding: 1rem; }
 }
+
+/* ─────────────────────────────────────────────
+   Phase 4: Timeline / Gantt Chart
+───────────────────────────────────────────── */
+
+.gantt-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Single scroll container — both header and body rows live here.
+   The nearest scrolling ancestor for sticky children is this element,
+   not .gantt-container, so top/left sticky both work correctly. */
+.gantt-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 320px);
+  min-height: 200px;
+}
+
+.gantt-header {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg-elevated);
+  min-width: max-content;
+}
+
+.gantt-label-col {
+  width: 210px;
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  position: sticky;
+  left: 0;
+  z-index: 11;
+  background: var(--bg-card);
+}
+
+/* Double-sticky intersection: header row + label column */
+.gantt-header .gantt-label-col {
+  z-index: 30;
+  background: var(--bg-elevated);
+}
+
+/* Preserve drop-target highlight on sticky label column */
+.gantt-row--droptarget .gantt-label-col {
+  background: rgba(99, 102, 241, 0.07);
+}
+
+.gantt-col-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.gantt-day-header {
+  flex-shrink: 0;
+  padding: 0.625rem 0.5rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.gantt-day-name {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.gantt-day-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.gantt-day-header--today .gantt-day-num {
+  color: var(--accent);
+}
+
+.gantt-today-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin: 0.125rem auto 0;
+}
+
+.gantt-row {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.gantt-row--droptarget {
+  background: rgba(99, 102, 241, 0.07) !important;
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+
+.gantt-designer-cell {
+  gap: 0.625rem;
+  align-items: center;
+}
+
+.gantt-bars-area {
+  flex: 1;
+  position: relative;
+  overflow: visible;
+}
+
+.gantt-bar {
+  position: absolute;
+  border-radius: var(--radius-sm);
+  padding: 0 0.5rem 0 0.375rem;
+  cursor: pointer;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: opacity var(--transition), box-shadow var(--transition);
+  user-select: none;
+  touch-action: none;
+  z-index: 2;
+}
+
+.gantt-bar:hover {
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+  z-index: 5;
+}
+
+.gantt-bar--dragging {
+  opacity: 0.4;
+  box-shadow: none !important;
+  cursor: grabbing;
+}
+
+.gantt-bar--atrisk {
+  animation: riskPulse 2s infinite;
+}
+
+.gantt-bar-handle {
+  opacity: 0;
+  transition: opacity var(--transition);
+  cursor: grab;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: inherit;
+}
+
+.gantt-bar:hover .gantt-bar-handle {
+  opacity: 0.6;
+}
+
+.gantt-bar-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.gantt-bar-number {
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-bar-title {
+  font-size: 0.63rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gantt-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  min-width: 230px;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: fadeIn 0.1s ease;
+}
+
+.gantt-tooltip-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-bottom: 0.375rem;
+  color: var(--text-primary);
+}
+
+.gantt-tooltip-meta {
+  margin-bottom: 0.5rem;
+}
+
+.gantt-tooltip-dates {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.gantt-tooltip-stream {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.gantt-tooltip-risk {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.gantt-tooltip-hint {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+  padding-top: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.gantt-empty-hint {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding-left: 1rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ── AI Proposal Card ───────────────────────────────────────────────────────── */
+
+.proposal-card {
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  padding: 0.875rem 1rem;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.proposal-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.5rem;
+}
+
+.proposal-card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.375rem;
+  line-height: 1.4;
+}
+
+.proposal-card-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.625rem;
+}
+
+.proposal-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.proposal-card-status {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 0.5rem;
+}
+
+.proposal-card-status--confirmed {
+  color: var(--success);
+}
+
+.proposal-card-status--dismissed {
+  color: var(--text-muted);
+}
+
+.proposal-card--confirmed {
+  border-color: var(--success);
+  opacity: 0.75;
+}
+
+.proposal-card--dismissed {
+  border-color: var(--border);
+  opacity: 0.45;
+}
+
+.gantt-legend {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  background: var(--bg-elevated);
+  flex-wrap: wrap;
+}
+
+.gantt-legend-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.gantt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Capacity bar */
+.capacity-bar-wrap {
+  height: 3px;
+  background: var(--border-strong);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.capacity-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.capacity-warning {
+  display: inline-flex;
+  align-items: center;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+/* Reassignment modal */
+.reassign-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+  animation: fadeIn 0.15s ease;
+}
+
+.reassign-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 1.75rem;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--shadow-lg);
+  animation: slideIn 0.2s ease;
+}
+
+/* ─── AI Drawer ──────────────────────────────────────────────────────────── */
+.ai-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 400px;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.28);
+}
+
+.ai-drawer--open {
+  transform: translateX(0);
+}
+
+.ai-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  flex-shrink: 0;
+}
+
+.ai-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.125rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.125rem;
+  scroll-behavior: smooth;
+}
+
+.ai-drawer-footer {
+  flex-shrink: 0;
+  padding: 0.875rem 1rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+/* ─── Designer Personal Schedule ─────────────────────────────────────────── */
+.designer-day-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.designer-day-label {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+  border-left: 3px solid var(--border-strong);
+  gap: 0.25rem;
+}
+
+.designer-day-empty {
+  padding: 1rem 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.designer-assignment-item {
+  display: flex;
+  gap: 0.875rem;
+  align-items: flex-start;
+  padding: 0.875rem 1rem 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.designer-assignment-item:hover {
+  background: var(--bg-hover);
+}
+
+.designer-assignment-item:last-child {
+  border-bottom: none;
+}

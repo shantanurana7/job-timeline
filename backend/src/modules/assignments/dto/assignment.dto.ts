@@ -1,4 +1,5 @@
-import { IsString, IsBoolean, IsOptional, IsDateString, IsNotEmpty } from 'class-validator';
+import { IsString, IsBoolean, IsOptional, IsDate, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAssignmentDto {
@@ -13,12 +14,14 @@ export class CreateAssignmentDto {
   designerId: string;
 
   @ApiProperty({ example: '2025-12-20T09:00:00Z' })
-  @IsDateString()
-  startTime: string;
+  @IsDate()
+  @Type(() => Date)
+  startTime: Date;
 
   @ApiProperty({ example: '2025-12-20T17:00:00Z' })
-  @IsDateString()
-  endTime: string;
+  @IsDate()
+  @Type(() => Date)
+  endTime: Date;
 
   @ApiPropertyOptional({ default: false })
   @IsOptional()
@@ -31,4 +34,23 @@ export class UnassignDto {
   @IsOptional()
   @IsString()
   reason?: string;
+}
+
+export class UpdateAssignmentDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  designerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  startTime?: Date;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  endTime?: Date;
 }

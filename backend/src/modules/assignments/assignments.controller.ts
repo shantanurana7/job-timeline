@@ -1,11 +1,11 @@
 import {
-  Controller, Get, Post, Delete, Body, Param, Query, UseGuards,
+  Controller, Get, Post, Delete, Patch, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Role } from '@prisma/client';
 import { AssignmentsService } from './assignments.service';
-import { CreateAssignmentDto, UnassignDto } from './dto/assignment.dto';
+import { CreateAssignmentDto, UnassignDto, UpdateAssignmentDto } from './dto/assignment.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -36,6 +36,18 @@ export class AssignmentsController {
   ) {
     const result = await this.assignmentsService.unassign(id, dto, user.id);
     return ApiResponse.ok(result);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.WORKFLOW_ADMIN)
+  @ApiOperation({ summary: 'Update assignment schedule or designer' })
+  async reschedule(
+    @Param('id') id: string,
+    @Body() dto: UpdateAssignmentDto,
+    @CurrentUser() user: any,
+  ) {
+    const result = await this.assignmentsService.reschedule(id, dto);
+    return ApiResponse.ok(result, 'Assignment updated');
   }
 
   @Get('designer/:designerId/schedule')

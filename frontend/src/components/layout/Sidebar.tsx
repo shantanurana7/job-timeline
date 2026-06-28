@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Briefcase, Calendar, Users, Settings,
-  LogOut, Zap, Bell, BarChart2, Shield, Layers,
+  LogOut, Zap, BarChart2, Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
+import { useAiStore } from '@/stores/ai.store';
 import { authApi } from '@/services';
 import Avatar from '@/components/ui/Avatar';
 import { Role } from '@/types';
@@ -18,13 +19,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={18} /> },
-  { label: 'Jobs', href: '/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Client Portal', href: '/portal', icon: <LayoutDashboard size={18} />, roles: ['CLIENT'] },
+  { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN', 'DESIGNER'] },
+  { label: 'Jobs', href: '/jobs', icon: <Briefcase size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN', 'DESIGNER'] },
   { label: 'Timeline', href: '/timeline', icon: <Calendar size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
   { label: 'Team', href: '/admin/users', icon: <Users size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
   { label: 'Analytics', href: '/analytics', icon: <BarChart2 size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
-  { label: 'AI Agent', href: '/ai', icon: <Zap size={18} /> },
-  { label: 'Admin', href: '/admin', icon: <Shield size={18} />, roles: ['ADMIN'] },
+  { label: 'AI Agent', href: '/ai', icon: <Zap size={18} />, roles: ['WORKFLOW_ADMIN'] },
   { label: 'Streams', href: '/admin/streams', icon: <Layers size={18} />, roles: ['ADMIN', 'WORKFLOW_ADMIN'] },
   { label: 'Settings', href: '/admin/settings', icon: <Settings size={18} />, roles: ['ADMIN'] },
 ];
@@ -42,6 +43,7 @@ export default function Sidebar() {
     try { await authApi.logout(refreshToken); } catch {}
     localStorage.removeItem('refreshToken');
     logout();
+    useAiStore.getState().clear();
     window.location.href = '/login';
   };
 
@@ -73,7 +75,7 @@ export default function Sidebar() {
           {visibleItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
-              <Link key={item.href} href={item.href}>
+              <Link key={item.label} href={item.href}>
                 <div className={`nav-link${isActive ? ' active' : ''}`}>
                   <span className="nav-icon">{item.icon}</span>
                   {item.label}

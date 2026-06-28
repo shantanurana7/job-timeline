@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { Job, JobFilters, JobStatus } from '@/types';
+import { AiActionProposal, Job, JobFilters, JobStatus } from '@/types';
 
 export const jobsApi = {
   list: (filters?: Partial<JobFilters>) =>
@@ -64,6 +64,8 @@ export const assignmentsApi = {
     apiClient.get('/assignments/timeline', { params: { from, to, streamId } }).then((r) => r.data),
   designerSchedule: (designerId: string, from?: string, to?: string) =>
     apiClient.get(`/assignments/designer/${designerId}/schedule`, { params: { from, to } }).then((r) => r.data),
+  reschedule: (id: string, data: { designerId?: string; startTime?: string; endTime?: string }) =>
+    apiClient.patch(`/assignments/${id}`, data).then((r) => r.data),
 };
 
 export const notificationsApi = {
@@ -83,6 +85,9 @@ export const analyticsApi = {
   dashboard: () => apiClient.get('/analytics/dashboard').then((r) => r.data),
   workload: () => apiClient.get('/analytics/workload').then((r) => r.data),
   streams: () => apiClient.get('/analytics/streams').then((r) => r.data),
+  // Returns the full AxiosResponse so the caller can access response.data as a Blob
+  exportJobs: (format: 'csv' = 'csv') =>
+    apiClient.get('/analytics/export', { params: { format }, responseType: 'blob' }),
 };
 
 export const attachmentsApi = {
@@ -97,8 +102,15 @@ export const attachmentsApi = {
   delete: (id: string) => apiClient.delete(`/attachments/${id}`).then((r) => r.data),
 };
 
+interface HistoryEntry {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export const aiApi = {
-  chat: (query: string, history: any[] = []) =>
-    apiClient.post('/ai/chat', { query, history }).then((r) => r.data),
+  chat: (query: string, history: HistoryEntry[] = []) =>
+    apiClient
+      .post<{ data: { reply: string; proposal?: AiActionProposal } }>('/ai/chat', { query, history })
+      .then((r) => r.data),
 };
 
