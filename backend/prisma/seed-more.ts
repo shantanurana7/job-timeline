@@ -11,7 +11,7 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('🌱 Adding more dummy jobs for today...');
+  console.log('🌱 Adding more dummy jobs for today and tomorrow...');
 
   const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
   const wfAdmin = await prisma.user.findFirst({ where: { role: 'WORKFLOW_ADMIN' } });
@@ -28,6 +28,13 @@ async function main() {
   
   const todayAt = (hour: number, min: number = 0) => {
     const d = new Date();
+    d.setHours(hour, min, 0, 0);
+    return d;
+  };
+
+  const tomorrowAt = (hour: number, min: number = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
     d.setHours(hour, min, 0, 0);
     return d;
   };
@@ -115,7 +122,62 @@ async function main() {
     },
   });
 
-  console.log(`✅ Added 3 new jobs and assigned them to ${designers[0].firstName} and ${designers[1].firstName} for today.`);
+  // Create Jobs for tomorrow
+  const jobD = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-9004`,
+      title: 'Tomorrow Client Presentation',
+      description: 'Prepare slides for tomorrow presentation.',
+      status: JobStatus.ASSIGNED,
+      priority: JobPriority.HIGH,
+      deadline: tomorrowAt(18),
+      streamId: stream.id,
+      clientId: client.id,
+      createdById: admin.id,
+    },
+  });
+
+  const jobE = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-9005`,
+      title: 'UI Mockups for New Feature',
+      description: 'Create UI mockups for the new feature dashboard.',
+      status: JobStatus.ASSIGNED,
+      priority: JobPriority.MEDIUM,
+      deadline: tomorrowAt(17),
+      streamId: stream.id,
+      clientId: client.id,
+      createdById: admin.id,
+    },
+  });
+
+  // Create Assignments for Designer 1 (Tomorrow)
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: jobD.id,
+      designerId: designers[0].id,
+      assignedById: wfAdmin.id,
+      isPrimary: true,
+      startTime: tomorrowAt(10, 0),
+      endTime: tomorrowAt(14, 0),
+      isActive: true,
+    },
+  });
+
+  // Create Assignments for Designer 2 (Tomorrow)
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: jobE.id,
+      designerId: designers[1].id,
+      assignedById: wfAdmin.id,
+      isPrimary: true,
+      startTime: tomorrowAt(11, 0),
+      endTime: tomorrowAt(16, 0),
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Added 5 new jobs and assigned them to ${designers[0].firstName} and ${designers[1].firstName} for today and tomorrow.`);
 }
 
 main()

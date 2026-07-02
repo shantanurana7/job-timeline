@@ -2,7 +2,7 @@
 
 A professional enterprise-grade job management and timeline scheduling platform.
 
-**Stack:** Next.js 15 · NestJS · PostgreSQL · Redis · Gemini AI · Socket.io  
+**Stack:** Next.js 15 · NestJS · PostgreSQL · Redis · Llama 3 (via Groq) · Socket.io  
 **Strategy:** Local-first development. Zero cost. Zero credit card required.
 
 ---
@@ -17,7 +17,7 @@ Install these **once** before starting:
 |---|---|---|
 | **Docker Desktop** | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) | Runs PostgreSQL, Redis, MailHog |
 | **Node.js 20+** | [nodejs.org](https://nodejs.org) | Backend + Frontend runtime |
-| **Gemini API Key** | [aistudio.google.com](https://aistudio.google.com) | Free AI agent (1,500 req/day, no card) |
+| **Groq API Key** | [console.groq.com](https://console.groq.com) | Fast AI agent (Llama 3 via Groq) |
 
 ---
 
@@ -27,8 +27,8 @@ Install these **once** before starting:
 # Copy the example env file
 cp .env.example .env
 
-# Add your Gemini API key to .env
-# GEMINI_API_KEY=your-key-here
+# Add your Groq API key to .env
+# GROQ_API_KEY=your-key-here
 ```
 
 ### 2. Start infrastructure
@@ -87,6 +87,16 @@ App available at → [http://localhost:3000](http://localhost:3000)
 | Designer | alex.chen@jobtimeline.local | Password1234! |
 | Client | client.acme@jobtimeline.local | Password1234! |
 
+*Note: The database seed (`npm run seed`) automatically populates 12 jobs spread across a realistic 4-day timeline (Yesterday, Today, Tomorrow, Monday) to demonstrate overlapping assignments and status constraints.*
+
+---
+
+## 🤖 AI Agent Features
+The built-in AI assistant supports fully conversational job management:
+- **Timezone Aware:** Converses in the user's local timezone (automatically passed by the browser) while storing data securely in UTC.
+- **Assignment Overlap Guard:** Prevents the AI from double-booking designers.
+- **Status Guardrails:** AI can only assign jobs in valid states (`UNDER_REVIEW`, `ACCEPTED`, `ASSIGNED`, `IN_PROGRESS`).
+
 ---
 
 ## 📂 Project Structure
@@ -132,7 +142,7 @@ timeline/
 | Cache | Redis via Docker | Free |
 | Email testing | MailHog via Docker | Free |
 | File uploads | Local disk (Multer) | Free |
-| AI Agent | Gemini (Google AI Studio) | Free (1,500 req/day) |
+| AI Agent | Llama 3 (via Groq) | Free tier available |
 
 ---
 

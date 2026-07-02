@@ -211,54 +211,96 @@ async function main() {
   // ── Job Sequence ─────────────────────────────────────────────────
   const currentYear = new Date().getFullYear();
   await prisma.jobSequence.create({
-    data: { year: currentYear, sequence: 10 },
+    data: { year: currentYear, sequence: 22 },
   });
 
   // ── Jobs ─────────────────────────────────────────────────────────
-  console.log('💼 Creating jobs...');
+  console.log('💼 Creating 12 jobs spread across 4 days...');
 
   const now = new Date();
-  const daysFromNow = (d: number) => new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
 
+  // Reference dates (midnight local — used for deadline display)
+  const yesterday  = new Date(now); yesterday.setDate(now.getDate() - 1); yesterday.setHours(0,0,0,0);
+  const tomorrow   = new Date(now); tomorrow.setDate(now.getDate() + 1);  tomorrow.setHours(0,0,0,0);
+  const monday     = new Date(now); monday.setDate(now.getDate() + 5);    monday.setHours(0,0,0,0);
+
+  // ── YESTERDAY jobs (JB-0011 / JB-0012 / JB-0013) ─────────────────
+  // Alex Chen — brand job, completed yesterday
   const job1 = await prisma.job.create({
     data: {
       jobNumber: `JB-${currentYear}-0011`,
       title: 'Annual Report 2024 Cover Design',
-      description: 'Need a premium annual report cover design. Corporate blue/gold theme. Must include company logo prominently.',
-      status: JobStatus.IN_PROGRESS,
+      description: 'Premium annual report cover. Corporate blue/gold theme. Must include logo prominently.',
+      status: JobStatus.COMPLETED,
       priority: JobPriority.HIGH,
       billingCode: 'ACME2024AR',
-      deadline: daysFromNow(5),
+      deadline: new Date(yesterday.getTime()),
+      streamId: brandStream.id,
+      clientId: client1.id,
+      createdById: admin.id,
+      completedAt: new Date(yesterday.getTime()),
+    },
+  });
+
+  // Priya Sharma — digital, delivered yesterday
+  const job2 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0012`,
+      title: 'Email Newsletter — July Edition',
+      description: 'Monthly newsletter template. Must be mobile-responsive with dark-mode support.',
+      status: JobStatus.COMPLETED,
+      priority: JobPriority.MEDIUM,
+      billingCode: 'GLOBEX-JUL',
+      deadline: new Date(yesterday.getTime()),
+      streamId: digitalStream.id,
+      clientId: client2.id,
+      createdById: admin.id,
+      completedAt: new Date(yesterday.getTime()),
+    },
+  });
+
+  // Marcus Lee — brand, paused / carried over from yesterday
+  const job3 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0013`,
+      title: 'Trade Show Banner Set',
+      description: '3x pull-up banners for upcoming trade show. 2000x800mm print-ready files required.',
+      status: JobStatus.PAUSED,
+      priority: JobPriority.LOW,
+      deadline: new Date(tomorrow.getTime()),
+      streamId: brandStream.id,
+      clientId: client1.id,
+      createdById: admin.id,
+      notes: 'Client requested pause to review copy changes.',
+    },
+  });
+
+  // ── TODAY jobs (JB-0014 / JB-0015 / JB-0016) ──────────────────────
+  // Alex Chen — in progress today
+  const job4 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0014`,
+      title: 'Brand Logo Refresh',
+      description: 'Modernise existing logo. Keep brand recognition but update for digital-first. Deliver SVG, PNG, and updated brand guidelines.',
+      status: JobStatus.IN_PROGRESS,
+      priority: JobPriority.HIGH,
+      deadline: new Date(tomorrow.getTime()),
       streamId: brandStream.id,
       clientId: client1.id,
       createdById: admin.id,
     },
   });
 
-  const job2 = await prisma.job.create({
+  // Nina Okafor — at risk, due today
+  const job5 = await prisma.job.create({
     data: {
-      jobNumber: `JB-${currentYear}-0012`,
-      title: 'Q4 Social Media Campaign Pack',
-      description: 'Instagram and LinkedIn post templates for Q4 campaign. 10 templates total, brand guidelines attached.',
-      status: JobStatus.ASSIGNED,
-      priority: JobPriority.MEDIUM,
-      billingCode: 'GLOBEX-Q4',
-      deadline: daysFromNow(14),
-      streamId: digitalStream.id,
-      clientId: client2.id,
-      createdById: admin.id,
-    },
-  });
-
-  const job3 = await prisma.job.create({
-    data: {
-      jobNumber: `JB-${currentYear}-0013`,
+      jobNumber: `JB-${currentYear}-0015`,
       title: 'Product Launch Email Template',
-      description: 'HTML email template for new product launch. Must be mobile-responsive. Dark mode support required.',
+      description: 'HTML email template for new product launch. Mobile-responsive, dark mode required.',
       status: JobStatus.AT_RISK,
       priority: JobPriority.CRITICAL,
       billingCode: 'INITECH-EM',
-      deadline: daysFromNow(1),
+      deadline: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 17, 0, 0),
       streamId: digitalStream.id,
       clientId: client3.id,
       createdById: admin.id,
@@ -266,218 +308,321 @@ async function main() {
     },
   });
 
-  const job4 = await prisma.job.create({
-    data: {
-      jobNumber: `JB-${currentYear}-0014`,
-      title: 'Brand Logo Refresh',
-      description: 'Modernize existing logo. Keep brand recognition but update for digital-first. Deliver SVG, PNG, and brand guidelines update.',
-      status: JobStatus.UNDER_REVIEW,
-      priority: JobPriority.HIGH,
-      deadline: daysFromNow(21),
-      streamId: brandStream.id,
-      clientId: client1.id,
-      createdById: admin.id,
-    },
-  });
-
-  const job5 = await prisma.job.create({
-    data: {
-      jobNumber: `JB-${currentYear}-0015`,
-      title: 'Trade Show Banner Set',
-      description: '3x pull-up banners for upcoming trade show. 2000x800mm print-ready files required.',
-      status: JobStatus.SUBMITTED,
-      priority: JobPriority.MEDIUM,
-      deadline: daysFromNow(30),
-      streamId: brandStream.id,
-      clientId: client2.id,
-      createdById: admin.id,
-    },
-  });
-
+  // Marcus Lee — assigned, working today
   const job6 = await prisma.job.create({
     data: {
       jobNumber: `JB-${currentYear}-0016`,
-      title: 'Website Hero Section Redesign',
-      description: 'Redesign homepage hero section. Must convert well on mobile. Provide Figma source files.',
-      status: JobStatus.COMPLETED,
-      priority: JobPriority.MEDIUM,
-      billingCode: 'INITECH-WEB',
-      deadline: daysFromNow(-7),
-      streamId: digitalStream.id,
-      clientId: client3.id,
-      createdById: admin.id,
-      completedAt: daysFromNow(-8),
-    },
-  });
-
-  const job7 = await prisma.job.create({
-    data: {
-      jobNumber: `JB-${currentYear}-0017`,
-      title: 'Employee Onboarding Booklet',
-      description: 'A5 booklet for new employee onboarding. 24 pages. Provide InDesign source and print-ready PDF.',
-      status: JobStatus.PAUSED,
-      priority: JobPriority.LOW,
-      deadline: daysFromNow(45),
-      streamId: brandStream.id,
-      clientId: client1.id,
-      createdById: admin.id,
-    },
-  });
-
-  const job8 = await prisma.job.create({
-    data: {
-      jobNumber: `JB-${currentYear}-0018`,
       title: 'Google Display Ad Set',
       description: 'Responsive display ads for Google Ads. Required sizes: 300x250, 728x90, 160x600, 320x50.',
-      status: JobStatus.ACCEPTED,
+      status: JobStatus.ASSIGNED,
       priority: JobPriority.MEDIUM,
-      deadline: daysFromNow(10),
+      deadline: new Date(monday.getTime()),
       streamId: digitalStream.id,
       clientId: client2.id,
       createdById: admin.id,
     },
   });
 
-  const job9 = await prisma.job.create({
+  // ── TOMORROW jobs (JB-0017 / JB-0018 / JB-0019) ───────────────────
+  // Priya Sharma — accepted, starting tomorrow
+  const job7 = await prisma.job.create({
     data: {
-      jobNumber: `JB-${currentYear}-0019`,
-      title: 'Christmas Campaign Creative',
-      description: 'Full Christmas campaign: social posts, email header, website banner. Festive but on-brand.',
-      status: JobStatus.ON_HOLD,
-      priority: JobPriority.LOW,
-      deadline: daysFromNow(90),
+      jobNumber: `JB-${currentYear}-0017`,
+      title: 'Q3 Social Media Campaign Pack',
+      description: 'Instagram and LinkedIn post templates for Q3. 10 templates, brand guidelines attached.',
+      status: JobStatus.ACCEPTED,
+      priority: JobPriority.MEDIUM,
+      billingCode: 'GLOBEX-Q3',
+      deadline: new Date(monday.getTime()),
+      streamId: digitalStream.id,
+      clientId: client2.id,
+      createdById: admin.id,
+    },
+  });
+
+  // Alex Chen — under review, scheduled for tomorrow
+  const job8 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0018`,
+      title: 'Website Hero Section Redesign',
+      description: 'Redesign homepage hero. Mobile-first, Figma source files required.',
+      status: JobStatus.UNDER_REVIEW,
+      priority: JobPriority.HIGH,
+      billingCode: 'INITECH-WEB',
+      deadline: new Date(monday.getTime()),
       streamId: digitalStream.id,
       clientId: client3.id,
       createdById: admin.id,
-      notes: 'On hold until client confirms brand direction for holiday season.',
     },
   });
 
-  const job10 = await prisma.job.create({
+  // Nina Okafor — in progress tomorrow
+  const job9 = await prisma.job.create({
     data: {
-      jobNumber: `JB-${currentYear}-0020`,
+      jobNumber: `JB-${currentYear}-0019`,
       title: 'Packaging Design — Premium Gift Box',
-      description: 'Luxury gift box packaging design. Emboss and foil details required. Structural dieline included.',
-      status: JobStatus.REJECTED,
-      priority: JobPriority.MEDIUM,
-      deadline: daysFromNow(-2),
+      description: 'Luxury gift box packaging. Emboss/foil details, structural dieline included.',
+      status: JobStatus.IN_PROGRESS,
+      priority: JobPriority.HIGH,
+      deadline: new Date(monday.getTime()),
       streamId: brandStream.id,
       clientId: client1.id,
       createdById: admin.id,
-      rejectionReason: 'Brief is incomplete. Client needs to provide brand guidelines and target market information before we can proceed.',
     },
   });
 
-  console.log(`✅ Created 10 jobs\n`);
+  // ── MONDAY jobs (JB-0020 / JB-0021 / JB-0022) ─────────────────────
+  // Marcus Lee — upcoming, scheduled Monday
+  const job10 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0020`,
+      title: 'Employee Onboarding Booklet',
+      description: 'A5 booklet for new employee onboarding. 24 pages. Deliver InDesign source + print-ready PDF.',
+      status: JobStatus.ASSIGNED,
+      priority: JobPriority.LOW,
+      deadline: new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000),
+      streamId: brandStream.id,
+      clientId: client1.id,
+      createdById: admin.id,
+    },
+  });
+
+  // Priya Sharma — Monday sprint
+  const job11 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0021`,
+      title: 'Christmas Campaign Creative',
+      description: 'Full Christmas campaign: social posts, email header, website banner. Festive but on-brand.',
+      status: JobStatus.ACCEPTED,
+      priority: JobPriority.MEDIUM,
+      deadline: new Date(monday.getTime() + 14 * 24 * 60 * 60 * 1000),
+      streamId: digitalStream.id,
+      clientId: client3.id,
+      createdById: admin.id,
+    },
+  });
+
+  // Alex Chen — Monday start
+  const job12 = await prisma.job.create({
+    data: {
+      jobNumber: `JB-${currentYear}-0022`,
+      title: 'Corporate Presentation Template',
+      description: 'PowerPoint + Google Slides master template. 20 slide layouts. Brand compliant.',
+      status: JobStatus.ASSIGNED,
+      priority: JobPriority.MEDIUM,
+      deadline: new Date(monday.getTime() + 3 * 24 * 60 * 60 * 1000),
+      streamId: brandStream.id,
+      clientId: client2.id,
+      createdById: admin.id,
+    },
+  });
+
+  console.log(`✅ Created 12 jobs\n`);
 
   // ── Assignments ──────────────────────────────────────────────────
-  console.log('📋 Creating assignments...');
+  console.log('📋 Creating assignments across 4 days...');
 
-  const todayAt = (hour: number) => {
-    const d = new Date(now);
-    d.setHours(hour, 0, 0, 0);
+  // Helper: specific date at hour (UTC)
+  const dateAt = (base: Date, hour: number, minute = 0) => {
+    const d = new Date(base);
+    d.setUTCHours(hour, minute, 0, 0);
     return d;
   };
 
-  // Job 1 — IN_PROGRESS — assigned to Alex Chen (primary)
-  await prisma.jobAssignment.create({
+  // ── YESTERDAY assignments ─────────────────────────────────────────
+  // Alex Chen: Annual Report (job1) — yesterday 09:00–13:00 (completed)
+  await prisma.jobAssignmentHistory.create({
     data: {
       jobId: job1.id,
       designerId: designer1.id,
       assignedById: workflowAdmin1.id,
       isPrimary: true,
-      startTime: todayAt(9),
-      endTime: todayAt(13),
-      isActive: true,
+      startTime: dateAt(yesterday, 3, 30),   // 09:00 IST
+      endTime:   dateAt(yesterday, 7, 30),   // 13:00 IST
+      unassignedAt: dateAt(yesterday, 7, 30),
+      unassignReason: 'Job completed',
     },
   });
 
-  // Job 2 — ASSIGNED — Marcus Lee (primary) + Nina Okafor (secondary)
-  await prisma.jobAssignment.create({
+  // Priya Sharma: Email Newsletter (job2) — yesterday 10:00–15:00 (completed)
+  await prisma.jobAssignmentHistory.create({
     data: {
       jobId: job2.id,
-      designerId: designer3.id,
-      assignedById: workflowAdmin2.id,
+      designerId: designer2.id,
+      assignedById: workflowAdmin1.id,
       isPrimary: true,
-      startTime: daysFromNow(2),
-      endTime: new Date(daysFromNow(2).setHours(17, 0, 0, 0)),
-      isActive: true,
-    },
-  });
-  await prisma.jobAssignment.create({
-    data: {
-      jobId: job2.id,
-      designerId: designer4.id,
-      assignedById: workflowAdmin2.id,
-      isPrimary: false,
-      startTime: daysFromNow(3),
-      endTime: new Date(daysFromNow(3).setHours(12, 0, 0, 0)),
-      isActive: true,
+      startTime: dateAt(yesterday, 4, 30),   // 10:00 IST
+      endTime:   dateAt(yesterday, 9, 30),   // 15:00 IST
+      unassignedAt: dateAt(yesterday, 9, 30),
+      unassignReason: 'Job completed',
     },
   });
 
-  // Job 3 — AT_RISK — Nina Okafor
+  // Marcus Lee: Trade Show Banners (job3) — yesterday 09:00–12:00 → paused
   await prisma.jobAssignment.create({
     data: {
       jobId: job3.id,
+      designerId: designer3.id,
+      assignedById: workflowAdmin1.id,
+      isPrimary: true,
+      startTime: dateAt(yesterday, 3, 30),   // 09:00 IST
+      endTime:   dateAt(yesterday, 6, 30),   // 12:00 IST
+      isActive: true,
+    },
+  });
+
+  // Nina Okafor: Display Ads (job6) — yesterday 08:00–11:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job6.id,
       designerId: designer4.id,
       assignedById: workflowAdmin2.id,
       isPrimary: true,
-      startTime: todayAt(14),
-      endTime: todayAt(17),
+      startTime: dateAt(yesterday, 2, 30),   // 08:00 IST
+      endTime:   dateAt(yesterday, 5, 30),   // 11:00 IST
       isActive: true,
     },
   });
 
-  // Job 7 — PAUSED — Alex Chen
+  // ── TODAY assignments ─────────────────────────────────────────────
+  // Alex Chen: Brand Logo Refresh (job4) — today 09:00–13:00
   await prisma.jobAssignment.create({
     data: {
-      jobId: job7.id,
+      jobId: job4.id,
       designerId: designer1.id,
       assignedById: workflowAdmin1.id,
       isPrimary: true,
-      startTime: daysFromNow(10),
-      endTime: new Date(daysFromNow(10).setHours(17, 0, 0, 0)),
+      startTime: dateAt(now, 3, 30),   // 09:00 IST
+      endTime:   dateAt(now, 7, 30),   // 13:00 IST
       isActive: true,
     },
   });
 
-  // Job 6 — COMPLETED — Marcus Lee (now in history)
-  await prisma.jobAssignmentHistory.create({
+  // Nina Okafor: Product Launch Email (job5 AT_RISK) — today 08:30–16:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job5.id,
+      designerId: designer4.id,
+      assignedById: workflowAdmin2.id,
+      isPrimary: true,
+      startTime: dateAt(now, 3, 0),    // 08:30 IST
+      endTime:   dateAt(now, 10, 30),  // 16:00 IST
+      isActive: true,
+    },
+  });
+
+  // Marcus Lee: Display Ad Set (job6) — today 13:00–17:00
+  await prisma.jobAssignment.create({
     data: {
       jobId: job6.id,
       designerId: designer3.id,
       assignedById: workflowAdmin2.id,
-      isPrimary: true,
-      startTime: daysFromNow(-14),
-      endTime: daysFromNow(-8),
-      unassignedAt: daysFromNow(-8),
-      unassignReason: 'Job completed successfully',
+      isPrimary: false,
+      startTime: dateAt(now, 7, 30),   // 13:00 IST
+      endTime:   dateAt(now, 11, 30),  // 17:00 IST
+      isActive: true,
     },
   });
 
-  console.log(`✅ Created assignments\n`);
+  // ── TOMORROW assignments ──────────────────────────────────────────
+  // Priya Sharma: Q3 Social Media Pack (job7) — tomorrow 10:00–15:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job7.id,
+      designerId: designer2.id,
+      assignedById: workflowAdmin1.id,
+      isPrimary: true,
+      startTime: dateAt(tomorrow, 4, 30),   // 10:00 IST
+      endTime:   dateAt(tomorrow, 9, 30),   // 15:00 IST
+      isActive: true,
+    },
+  });
+
+  // Alex Chen: Website Hero (job8) — tomorrow 09:00–12:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job8.id,
+      designerId: designer1.id,
+      assignedById: workflowAdmin1.id,
+      isPrimary: true,
+      startTime: dateAt(tomorrow, 3, 30),   // 09:00 IST
+      endTime:   dateAt(tomorrow, 6, 30),   // 12:00 IST
+      isActive: true,
+    },
+  });
+
+  // Nina Okafor: Gift Box Packaging (job9) — tomorrow 08:00–14:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job9.id,
+      designerId: designer4.id,
+      assignedById: workflowAdmin2.id,
+      isPrimary: true,
+      startTime: dateAt(tomorrow, 2, 30),   // 08:00 IST
+      endTime:   dateAt(tomorrow, 8, 30),   // 14:00 IST
+      isActive: true,
+    },
+  });
+
+  // ── MONDAY assignments ────────────────────────────────────────────
+  // Marcus Lee: Onboarding Booklet (job10) — Monday 09:00–17:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job10.id,
+      designerId: designer3.id,
+      assignedById: workflowAdmin1.id,
+      isPrimary: true,
+      startTime: dateAt(monday, 3, 30),   // 09:00 IST
+      endTime:   dateAt(monday, 11, 30),  // 17:00 IST
+      isActive: true,
+    },
+  });
+
+  // Priya Sharma: Christmas Campaign (job11) — Monday 10:00–15:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job11.id,
+      designerId: designer2.id,
+      assignedById: workflowAdmin2.id,
+      isPrimary: true,
+      startTime: dateAt(monday, 4, 30),   // 10:00 IST
+      endTime:   dateAt(monday, 9, 30),   // 15:00 IST
+      isActive: true,
+    },
+  });
+
+  // Alex Chen: Presentation Template (job12) — Monday 09:00–13:00
+  await prisma.jobAssignment.create({
+    data: {
+      jobId: job12.id,
+      designerId: designer1.id,
+      assignedById: workflowAdmin1.id,
+      isPrimary: true,
+      startTime: dateAt(monday, 3, 30),   // 09:00 IST
+      endTime:   dateAt(monday, 7, 30),   // 13:00 IST
+      isActive: true,
+    },
+  });
+
+  console.log(`✅ Created assignments across 4 days\n`);
 
   // ── Status History ───────────────────────────────────────────────
   console.log('📜 Creating status histories...');
 
-  // Job 1 timeline
   await prisma.jobStatusHistory.createMany({
     data: [
-      { jobId: job1.id, fromStatus: null, toStatus: JobStatus.SUBMITTED, changedById: client1.id, isSystem: true },
-      { jobId: job1.id, fromStatus: JobStatus.SUBMITTED, toStatus: JobStatus.UNDER_REVIEW, changedById: workflowAdmin1.id, isSystem: true },
-      { jobId: job1.id, fromStatus: JobStatus.UNDER_REVIEW, toStatus: JobStatus.ACCEPTED, changedById: workflowAdmin1.id },
-      { jobId: job1.id, fromStatus: JobStatus.ACCEPTED, toStatus: JobStatus.ASSIGNED, changedById: workflowAdmin1.id },
-      { jobId: job1.id, fromStatus: JobStatus.ASSIGNED, toStatus: JobStatus.IN_PROGRESS, changedById: designer1.id },
-    ],
-  });
-
-  // Job 10 — Rejection
-  await prisma.jobStatusHistory.createMany({
-    data: [
-      { jobId: job10.id, fromStatus: null, toStatus: JobStatus.SUBMITTED, changedById: client1.id, isSystem: true },
-      { jobId: job10.id, fromStatus: JobStatus.SUBMITTED, toStatus: JobStatus.UNDER_REVIEW, changedById: workflowAdmin1.id, isSystem: true },
-      { jobId: job10.id, fromStatus: JobStatus.UNDER_REVIEW, toStatus: JobStatus.REJECTED, changedById: workflowAdmin1.id, reason: 'Brief incomplete' },
+      // job4 — Logo Refresh — full journey to IN_PROGRESS
+      { jobId: job4.id, fromStatus: null,                toStatus: JobStatus.SUBMITTED,    changedById: client1.id,       isSystem: true },
+      { jobId: job4.id, fromStatus: JobStatus.SUBMITTED, toStatus: JobStatus.UNDER_REVIEW, changedById: workflowAdmin1.id, isSystem: true },
+      { jobId: job4.id, fromStatus: JobStatus.UNDER_REVIEW, toStatus: JobStatus.ACCEPTED,  changedById: workflowAdmin1.id },
+      { jobId: job4.id, fromStatus: JobStatus.ACCEPTED,  toStatus: JobStatus.ASSIGNED,     changedById: workflowAdmin1.id },
+      { jobId: job4.id, fromStatus: JobStatus.ASSIGNED,  toStatus: JobStatus.IN_PROGRESS,  changedById: designer1.id },
+      // job5 — Product Email — escalated to AT_RISK
+      { jobId: job5.id, fromStatus: null,                toStatus: JobStatus.SUBMITTED,    changedById: client3.id,       isSystem: true },
+      { jobId: job5.id, fromStatus: JobStatus.SUBMITTED, toStatus: JobStatus.UNDER_REVIEW, changedById: workflowAdmin2.id, isSystem: true },
+      { jobId: job5.id, fromStatus: JobStatus.UNDER_REVIEW, toStatus: JobStatus.ACCEPTED,  changedById: workflowAdmin2.id },
+      { jobId: job5.id, fromStatus: JobStatus.ACCEPTED,  toStatus: JobStatus.ASSIGNED,     changedById: workflowAdmin2.id },
+      { jobId: job5.id, fromStatus: JobStatus.ASSIGNED,  toStatus: JobStatus.AT_RISK,      changedById: workflowAdmin2.id, isSystem: true, reason: 'Deadline within 24h' },
     ],
   });
 
@@ -490,38 +635,38 @@ async function main() {
     data: [
       {
         userId: workflowAdmin1.id,
-        jobId: job4.id,
+        jobId: job8.id,
         type: 'JOB_SUBMITTED',
         title: 'New Job Request',
-        message: `${client1.firstName} ${client1.lastName} submitted a new request: "${job4.title}"`,
+        message: `${client3.firstName} ${client3.lastName} submitted a new request: "${job8.title}"`,
         isRead: false,
-        metadata: { jobNumber: job4.jobNumber, clientName: `${client1.firstName} ${client1.lastName}` },
+        metadata: { jobNumber: job8.jobNumber, clientName: `${client3.firstName} ${client3.lastName}` },
       },
       {
         userId: designer4.id,
-        jobId: job3.id,
+        jobId: job5.id,
         type: 'JOB_AT_RISK',
-        title: '⚠️ Job At Risk — Deadline in 24h',
-        message: `"${job3.title}" is due within 24 hours. Priority: CRITICAL.`,
+        title: '⚠️ Job At Risk — Deadline Today',
+        message: `"${job5.title}" is due today. Priority: CRITICAL.`,
         isRead: false,
-        metadata: { jobNumber: job3.jobNumber, deadline: job3.deadline },
+        metadata: { jobNumber: job5.jobNumber, deadline: job5.deadline },
       },
       {
         userId: designer1.id,
-        jobId: job1.id,
+        jobId: job4.id,
         type: 'JOB_ASSIGNED',
         title: 'New Job Assigned',
-        message: `You have been assigned to "${job1.title}" by ${workflowAdmin1.firstName} ${workflowAdmin1.lastName}.`,
+        message: `You have been assigned to "${job4.title}" by ${workflowAdmin1.firstName} ${workflowAdmin1.lastName}.`,
         isRead: true,
         readAt: new Date(),
-        metadata: { jobNumber: job1.jobNumber },
+        metadata: { jobNumber: job4.jobNumber },
       },
       {
-        userId: client1.id,
+        userId: designer3.id,
         jobId: job10.id,
-        type: 'JOB_REJECTED',
-        title: 'Job Request Rejected',
-        message: `Your request "${job10.title}" was not accepted. Reason: ${job10.rejectionReason}`,
+        type: 'JOB_ASSIGNED',
+        title: 'New Job Assigned',
+        message: `You have been assigned to "${job10.title}" for Monday.`,
         isRead: false,
         metadata: { jobNumber: job10.jobNumber },
       },
@@ -562,11 +707,14 @@ async function main() {
   // ── Summary ──────────────────────────────────────────────────────
   console.log('═══════════════════════════════════════════════');
   console.log('✅ Seed complete! Demo credentials:\n');
-  console.log('  ADMIN:           admin@jobtimeline.local     / Admin1234!');
-  console.log('  WORKFLOW ADMIN:  wa.brand@jobtimeline.local  / Password1234!');
-  console.log('  WORKFLOW ADMIN:  wa.digital@jobtimeline.local/ Password1234!');
-  console.log('  DESIGNER:        alex.chen@jobtimeline.local / Password1234!');
-  console.log('  CLIENT:          client.acme@jobtimeline.local/ Password1234!');
+  console.log('  ADMIN:           admin@jobtimeline.local       / Admin1234!');
+  console.log('  WORKFLOW ADMIN:  wa.brand@jobtimeline.local    / Password1234!');
+  console.log('  WORKFLOW ADMIN:  wa.digital@jobtimeline.local  / Password1234!');
+  console.log('  DESIGNER:        alex.chen@jobtimeline.local   / Password1234!');
+  console.log('  CLIENT:          client.acme@jobtimeline.local / Password1234!');
+  console.log('');
+  console.log('  12 jobs spread: Yesterday · Today · Tomorrow · Monday');
+  console.log('  Designers: Alex Chen · Priya Sharma · Marcus Lee · Nina Okafor');
   console.log('═══════════════════════════════════════════════\n');
 }
 

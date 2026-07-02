@@ -108,9 +108,22 @@ interface HistoryEntry {
 }
 
 export const aiApi = {
-  chat: (query: string, history: HistoryEntry[] = []) =>
-    apiClient
-      .post<{ data: { reply: string; proposal?: AiActionProposal } }>('/ai/chat', { query, history })
-      .then((r) => r.data),
+  chat: (query: string, history: HistoryEntry[] = []) => {
+    // Derive the browser's IANA timezone and UTC-offset string at call time
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; // e.g. "Asia/Kolkata"
+    const rawOffset = -new Date().getTimezoneOffset();                 // e.g. 330 for IST
+    const sign      = rawOffset >= 0 ? '+' : '-';
+    const absMin    = Math.abs(rawOffset);
+    const tzOffset  = `${sign}${String(Math.floor(absMin / 60)).padStart(2, '0')}:${String(absMin % 60).padStart(2, '0')}`;
+
+    return apiClient
+      .post<{ data: { reply: string; proposal?: AiActionProposal } }>('/ai/chat', {
+        query,
+        history,
+        timezone,
+        tzOffset,
+      })
+      .then((r) => r.data);
+  },
 };
 

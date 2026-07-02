@@ -1,12 +1,13 @@
 'use client';
 import { useRef, useEffect, useState } from 'react';
-import { aiApi, assignmentsApi, jobsApi } from '@/services';
+import { aiApi } from '@/services';
 import { toast } from '@/stores/toast.store';
 import { Zap, Send, User, Bot, Loader2, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ProposalCard } from '@/components/ui/ProposalCard';
 import { useAiStore } from '@/stores/ai.store';
-import { AiActionProposal, JobStatus } from '@/types';
+import { AiActionProposal } from '@/types';
+import { executeProposal } from '@/lib/executeProposal';
 
 export default function AiDrawer() {
   const { messages, input, loading, isOpen, addMessage, setInput, setLoading, setOpen } =
@@ -51,24 +52,12 @@ export default function AiDrawer() {
 
   const handleConfirm = async (proposal: AiActionProposal) => {
     try {
-      if (proposal.action === 'assign_designer_to_job') {
-        await assignmentsApi.assign({
-          jobId: proposal.payload.jobId,
-          designerId: proposal.payload.designerId,
-          startTime: proposal.payload.startTime,
-          endTime: proposal.payload.endTime,
-          isPrimary: true,
-        });
-      } else if (proposal.action === 'change_job_status') {
-        await jobsApi.changeStatus(
-          proposal.payload.jobId,
-          proposal.payload.newStatus as JobStatus,
-        );
-      }
+      await executeProposal(proposal);
       toast.success('Action executed successfully');
       setConfirmedProposals((prev) => new Set([...prev, proposal.id]));
-    } catch {
-      toast.error('Action failed — please try again');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || (err instanceof Error ? err.message : 'Action failed — please try again');
+      toast.error(msg);
     }
   };
 

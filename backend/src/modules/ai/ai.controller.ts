@@ -25,6 +25,8 @@ export class AiController {
       currentUser.role,
       dto.query,
       dto.history ?? [],
+      dto.timezone,
+      dto.tzOffset,
     );
     return ApiResponse.ok(result);
   }

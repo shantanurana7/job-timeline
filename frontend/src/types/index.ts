@@ -172,7 +172,14 @@ export interface AiConversation {
   updatedAt: string;
 }
 
-export type AiActionName = 'assign_designer_to_job' | 'change_job_status';
+export type AiActionName =
+  | 'assign_designer_to_job'
+  | 'change_job_status'
+  | 'create_job'
+  | 'update_job_priority'
+  | 'update_job_deadline'
+  | 'add_job_note'
+  | 'remove_assignment';
 
 export interface AiActionProposal {
   id: string;
@@ -180,13 +187,19 @@ export interface AiActionProposal {
   description: string;
   reasoning: string;
   payload: {
-    jobId: string;
-    jobNumber: string;
+    jobId?: string;
+    jobNumber?: string;
     designerId?: string;
     designerName?: string;
     startTime?: string;
     endTime?: string;
     newStatus?: string;
+    newPriority?: string;
+    newDeadline?: string;
+    note?: string;
+    title?: string;
+    description?: string;
+    assignmentId?: string;
   };
   expiresAt: string;
 }

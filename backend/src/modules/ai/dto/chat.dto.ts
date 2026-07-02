@@ -25,4 +25,14 @@ export class ChatDto {
   @ValidateNested({ each: true })
   @Type(() => HistoryEntryDto)
   history?: HistoryEntryDto[];
+
+  @ApiPropertyOptional({ description: "IANA timezone name from the browser (e.g. 'Asia/Kolkata')", example: 'Asia/Kolkata' })
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
+  @ApiPropertyOptional({ description: "UTC offset string derived from the browser (e.g. '+05:30')", example: '+05:30' })
+  @IsOptional()
+  @IsString()
+  tzOffset?: string;
 }

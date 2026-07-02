@@ -36,6 +36,22 @@ export class AssignmentsService {
       throw new BadRequestException('Maximum 3 designers can be assigned to one job');
     }
 
+    // No overlapping assignments for the same designer
+    const overlap = await this.prisma.jobAssignment.findFirst({
+      where: {
+        designerId: dto.designerId,
+        isActive:   true,
+        startTime:  { lt: dto.endTime },   // existing starts before new one ends
+        endTime:    { gt: dto.startTime }, // existing ends after new one starts
+      },
+      select: { id: true, job: { select: { jobNumber: true } } },
+    });
+    if (overlap) {
+      throw new BadRequestException(
+        `Designer already has an active assignment (${overlap.job.jobNumber}) that overlaps with the requested time slot.`,
+      );
+    }
+
     // If isPrimary, unset existing primary
     if (dto.isPrimary) {
       await this.prisma.jobAssignment.updateMany({
